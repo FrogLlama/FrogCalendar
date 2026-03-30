@@ -1,0 +1,52 @@
+/* 전체 레이아웃 (PC/모바일 하이브리드) 스타일링 */
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+body { background: #2b2b2b; color: #fff; overscroll-behavior-y: none; }
+
+.screen { width: 100vw; height: 100vh; display: flex; flex-direction: column; }
+.hidden { display: none !important; }
+.flex-center { justify-content: center; align-items: center; }
+
+/* 카드/로그인 UI */
+.card { background: #333; padding: 30px; border-radius: 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 85%; max-width: 400px; }
+.card h1 { color: #f39c12; margin-bottom: 10px; font-size: 24px; }
+.card p { color: #aaa; font-size: 13px; line-height: 1.5; }
+
+/* 버튼 디자인 */
+.btn { padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 15px; }
+.btn.primary { background: #0984e3; color: white; width: 100%; box-shadow: 0 4px 10px rgba(9, 132, 227, 0.4); }
+.btn.secondary { background: #555; color: white; padding: 8px 15px; font-size: 13px; }
+.btn-icon { background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 10px; }
+.full-width { width: 100%; }
+
+/* 헤더 & 월 변경 바 */
+.app-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: #222; border-bottom: 1px solid #444; }
+.tab-select { background: #444; color: white; border: 1px solid #666; padding: 6px 12px; border-radius: 6px; font-weight: bold; }
+.month-controls { display: flex; justify-content: space-between; align-items: center; padding: 5px 15px; background: #2f2f2f; height: 50px; }
+.month-controls h2 { font-size: 18px; color: #f39c12; }
+
+/* 달력 그리드 */
+.calendar-grid { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(80px, 1fr); gap: 1px; background: #111; overflow-y: auto; }
+.cal-header { background: #222; text-align: center; font-size: 11px; padding: 8px 0; color: #aaa; font-weight: bold; height: 30px; }
+.cal-cell { background: #2b2b2b; padding: 4px; display: flex; flex-direction: column; cursor: pointer; border-bottom: 1px solid #333; overflow: hidden; }
+.cal-cell:active { background: #444; }
+.day-num { font-size: 13px; font-weight: bold; color: white; margin-bottom: 3px; }
+.sunday .day-num, .holiday .day-num { color: #f39c12; }
+.sat .day-num { color: #f39c12; }
+
+/* 폰에서 보여질 작은 메모 조각들 */
+.cell-note { font-size: 10px; color: #ddd; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; word-break: break-all; margin-top: 1px; }
+
+/* 모달 텍스트 에디터 (= 윈도우 NoteWindow.xaml 동일 컨셉 제한적 구현) */
+.modal { position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; padding: 20px; z-index: 100; }
+.modal-content { background: #2b2b2b; border-radius: 12px; width: 100%; max-width: 400px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.modal-header h3 { color: white; font-size: 16px; font-weight: bold; }
+.btn-close { background: none; border: none; color: #888; font-size: 20px; cursor: pointer; }
+#txt-editor { width: 100%; height: 180px; background: #222; color: #e0e0e0; border: none; border-radius: 6px; padding: 10px; font-size: 15px; resize: none; word-break: break-all; margin-bottom: 15px; }
+
+/* 모달 색상/조작 라인 */
+.modal-controls { display: flex; justify-content: space-between; align-items: center; }
+.color-picker { display: flex; gap: 8px; }
+.color-picker input { display: none; }
+.color-picker span { display: inline-block; width: 22px; height: 22px; border-radius: 50%; opacity: 0.5; cursor: pointer; border: 2px solid transparent; }
+.color-picker input:checked + span { opacity: 1; border-color: white; transform: scale(1.1); }

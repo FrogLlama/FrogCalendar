@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <!-- 모바일 PWA 핵심: 화면 줌 금지, 전체화면 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Frog Calendar</title>
+    <!-- 매니페스트: 이 1줄이 브라우저에서 '홈 화면에 앱으로 추가' 기능을 가능하게 합니다 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2b2b2b">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+</head>
+<body>
+    <!-- 1. 첫 접속 화면: 구글 로그인 (서버 0원 구조의 핵심) -->
+    <div id="login-screen" class="screen flex-center">
+        <div class="card">
+            <h1>🐸 개구리 달력</h1>
+            <p>나만의 구글 계정을 저장소로 사용하는 강력한 PC동기화 캘린더</p>
+            <br>
+            <!-- Google API 인증 버튼 -->
+            <button id="btn-login" class="btn primary">구글 드라이브 연결 및 로그인</button>
+            <p style="margin-top:20px; font-size:11px; color:#888;">웹과 폰에서는 읽으실 데이터에만 안전하게 접근합니다.</p>
+        </div>
+    </div>
+
+    <!-- 2. 달력 조회 화면 -->
+    <div id="main-screen" class="screen hidden">
+        <header class="app-header">
+            <div class="user-info">
+                <span id="txt-status">☁️ 동기화 중...</span>
+            </div>
+            <!-- PC와 동일한 탭 리스트 -->
+            <select id="sel-tabs" class="tab-select"></select>
+        </header>
+
+        <div class="month-controls">
+            <button id="btn-prev" class="btn-icon">◀</button>
+            <h2 id="txt-month-year">2026.03</h2>
+            <button id="btn-next" class="btn-icon">▶</button>
+        </div>
+
+        <!-- 달력 격자무늬 표시란 -->
+        <div id="calendar-grid" class="calendar-grid">
+            <!-- JavaScript가 요일과 날짜 칸을 채워넣습니다 -->
+        </div>
+    </div>
+
+    <!-- 3. 메모 추가/수정용 모바일 팝업 (취소선 기능 포함) -->
+    <div id="modal-note" class="modal hidden">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h3 id="txt-modal-date">2026-03-30</h3>
+                <button id="btn-close-modal" class="btn-close">✕</button>
+            </header>
+            <textarea id="txt-editor" placeholder="여기에 일정을 입력하세요..."></textarea>
+            
+            <div class="modal-controls">
+                <!-- 색상 선택 (PC앱의 [C:#...] 포맷 호환) -->
+                <div class="color-picker" id="color-picker-group">
+                    <label><input type="radio" name="color" value="" checked> <span style="background:#555"></span></label>
+                    <label><input type="radio" name="color" value="#D32F2F"> <span style="background:#D32F2F"></span></label>
+                    <label><input type="radio" name="color" value="#388E3C"> <span style="background:#388E3C"></span></label>
+                    <label><input type="radio" name="color" value="#1976D2"> <span style="background:#1976D2"></span></label>
+                    <label><input type="radio" name="color" value="#FBC02D"> <span style="background:#FBC02D"></span></label>
+                </div>
+                <!-- 취소선 토글 버튼 -->
+                <button id="btn-strikethrough" class="btn secondary">✓ 완료 (~취소선)</button>
+            </div>
+
+            <button id="btn-save" class="btn primary full-width" style="margin-top:10px;">저장 (구글 동기화)</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

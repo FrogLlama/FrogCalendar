@@ -213,7 +213,29 @@ function startAutoSync() {
 }
 
 async function loadSnapshotFromDrive(isAutoSync = false) {
-    if (!isAutoSync) txtStatus.innerText = "☁️ 캘린더 읽어오는 중...";
+    if (!isAutoSync) {
+        txtStatus.innerText = "☁️ 캘린더 스캔 중...";
+        
+        // --- 🚀 [초고속 로딩] 구글 통신을 기다리지 않고 로컬 금고(Cache)에서 0.1초 만에 화면부터 그림 ---
+        const offlineData = localStorage.getItem('frog_offline_data');
+        if (offlineData && (!calendarData || !calendarData.Calendars || calendarData.Calendars.length === 0)) {
+            try {
+                calendarData = JSON.parse(offlineData);
+                // 탭 즉시 렌더링 보장
+                if (selTabs.options.length === 0) {
+                    selTabs.innerHTML = '';
+                    let tabs = calendarData.Calendars || [];
+                    tabs.sort((a,b) => a.SortOrder - b.SortOrder).forEach(t => {
+                        const opt = document.createElement('option');
+                        opt.value = t.Id; opt.innerText = t.Name;
+                        selTabs.appendChild(opt);
+                    });
+                    if (tabs.length > 0) selectedTabId = tabs[0].Id;
+                }
+                renderCalendar();
+            } catch(e) { logDebug("캐시 렌더링 실페: " + e.message); }
+        }
+    }
     logDebug("== 동기화 스냅샷 조회 시작 ==");
     try {
         // appDataFolder에서 파일 목록 검색 (반드시 인코딩 필요)

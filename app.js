@@ -56,6 +56,20 @@ window.onload = () => {
                 deferredPrompt = null;
             }
         };
+        
+        // ---🍎 [아이폰 대응] iOS 사파리 감지 및 수동 안내 패치 ---
+        const isIOS = /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent) && 'ontouchend' in document;
+        const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+        
+        if (isIOS && !isStandalone) {
+            installBtn.style.display = 'block';
+            installBtn.style.background = '#333';
+            installBtn.style.border = '1px solid #777';
+            installBtn.innerText = "🍎 사파리 [공유] ➡ [홈 화면에 추가] 로 설치";
+            installBtn.onclick = () => {
+                alert("📱 아이폰(사파리)에서 정식 앱으로 설치하시려면:\n\n화면 맨 아래쪽에 있는 [공유 버튼(네모 상자와 위쪽 화살표)]을 누르신 뒤, 스크롤을 내려서 [홈 화면에 추가]를 눌러주세요!\n\n홈 화면에 예쁜 개구리 앱이 깔립니다! 🐸");
+            };
+        }
     }
 
     // ---- 2. 1시간 유지 자동 로그인 패스 (토큰 재활용) 및 오프라인 패스 ----

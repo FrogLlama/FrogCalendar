@@ -95,8 +95,9 @@ async function fetchGoogle(endpoint, method = 'GET', body = null) {
 async function loadSnapshotFromDrive() {
     txtStatus.innerText = "☁️ 캘린더 읽어오는 중...";
     try {
-        // appDataFolder에서 파일 목록 검색
-        const filesRes = await fetchGoogle("files?spaces=appDataFolder&q=name='FrogCalendar.json'");
+        // appDataFolder에서 파일 목록 검색 (반드시 인코딩 필요)
+        const query = encodeURIComponent("name='FrogCalendar.json'");
+        const filesRes = await fetchGoogle(`files?spaces=appDataFolder&q=${query}`);
         if (!filesRes.files || filesRes.files.length === 0) {
             txtStatus.innerText = "상태: PC 데이터 없음 (먼저 PC에서 올려주세요)";
             return;
@@ -226,7 +227,8 @@ async function saveNoteToDrive() {
 
     try {
         // 기존 폰 전용 파일이 있는지 확인 후 덧붙이기 (Append/Upload 로직)
-        const fileRes = await fetchGoogle("files?spaces=appDataFolder&q=name='device_PWA_Phone.jsonl'");
+        const query = encodeURIComponent("name='device_PWA_Phone.jsonl'");
+        const fileRes = await fetchGoogle(`files?spaces=appDataFolder&q=${query}`);
         let fileId = fileRes.files && fileRes.files.length > 0 ? fileRes.files[0].id : null;
 
         let previousData = "";

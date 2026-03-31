@@ -37,25 +37,32 @@ window.onerror = function(message, source, lineno, colno, error) {
 
 // --- 1. 브라우저 로딩 및 구글 인증 체계 초기화 ---
 window.onload = () => {
+    logDebug("✅ 브라우저 준비 완료. 구글 모듈(GSI) 로딩 중...");
+    
     // Google Identity Services 로드 대기
     google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
         callback: (response) => {
             if (response && response.access_token) {
+                logDebug("자동 콜백 응답 도착");
                 accessToken = response.access_token;
                 loginScreen.classList.add('hidden');
                 mainScreen.classList.remove('hidden');
                 loadSnapshotFromDrive(); // 폰 뷰어의 심장: PC가 올려둔 JSON 다운로드
+            } else {
+                logDebug("콜백 응답에 토큰이 없습니다.");
             }
         }
     });
 
     document.getElementById('btn-login').onclick = () => {
+        logDebug("▶ [구글 로그인] 버튼 클릭됨! 구글 팝업 호출 중...");
         tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: CLIENT_ID,
             scope: SCOPES,
             callback: (res) => {
+                logDebug("수동 로그인 팝업 콜백 완료.");
                 accessToken = res.access_token;
                 loginScreen.classList.add('hidden');
                 mainScreen.classList.remove('hidden');

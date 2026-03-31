@@ -403,22 +403,10 @@ async function saveNoteToDrive() {
             }
         }
 
-        // 2. 동시성 충돌 해결 (Smart Merge - Append)
+        // 2. 단순 최신 덮어쓰기 (Last-Write-Wins) 처리
         let existingNote = cloudData.DailyNotes.find(n => n.CalendarId === selectedTabId && n.DateText === modalTargetDate);
         if (existingNote) {
-            // 똑같은 노트가 존재할 때, 내용이 서로 다르다면 이어붙이기
-            let cleanFinal = txtEditor.value.trim();
-            // 임시로 구글에 있던 내용에서 색상 태그를 제거하고 원본 텍스트만 추출해 비교
-            let rawCloudText = existingNote.Content || "";
-            if (rawCloudText.startsWith("[C:#") && rawCloudText.length >= 11 && rawCloudText[10] === ']') {
-                rawCloudText = rawCloudText.substring(11);
-            }
-            rawCloudText = rawCloudText.trim();
-
-            if (rawCloudText !== cleanFinal && rawCloudText.length > 0 && cleanFinal.length > 0) {
-                logDebug("⚠️ 동시성 충돌 감지! 데이터를 날리지 않고 이어붙입니다 (Append).");
-                finalContent = `${prefix}${rawCloudText} \n\n--- 폰에서 병합됨 ---\n\n ${cleanFinal}`;
-            }
+            // 사용자 요청: 잔여물이 남는 강제 병합 이어붙이기(Append) 로직 폐기. 무조건 최신 작성 내용으로 덮어씀.
             existingNote.Content = finalContent;
             existingNote.UpdatedAt = nowUtc;
         } else {

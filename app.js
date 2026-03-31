@@ -5,9 +5,10 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 
 let tokenClient;
 let accessToken = null;
-let calendarData = { Calendars: [], DailyNotes: [] };
+let calendarData = { Calendars: [], DailyNotes: [], RecurringNotes: [] };
 let currentMonth = new Date();
 let selectedTabId = null;
+let webSyncTimer = null;
 
 // --- 요소 가져오기 ---
 const loginScreen = document.getElementById('login-screen');
@@ -50,6 +51,7 @@ window.onload = () => {
                 loginScreen.classList.add('hidden');
                 mainScreen.classList.remove('hidden');
                 loadSnapshotFromDrive(); // 폰 뷰어의 심장: PC가 올려둔 JSON 다운로드
+                startAutoSync();         // 웹 자동 동기화 가동
             } else {
                 logDebug("콜백 응답에 토큰이 없습니다.");
             }
@@ -67,6 +69,7 @@ window.onload = () => {
                 loginScreen.classList.add('hidden');
                 mainScreen.classList.remove('hidden');
                 loadSnapshotFromDrive();
+                startAutoSync();
             }
         });
         tokenClient.requestAccessToken();
@@ -116,8 +119,22 @@ async function fetchGoogle(endpoint, method = 'GET', body = null) {
     return json;
 }
 
-async function loadSnapshotFromDrive() {
-    txtStatus.innerText = "☁️ 캘린더 읽어오는 중...";
+// --- 2-1. 웹 전용 자동 동기화 타이머 ---
+function startAutoSync() {
+    if (!webSyncTimer) {
+        logDebug("⏰ [웹] 10초 주기 자동 동기화 감시 타이머 가동");
+        webSyncTimer = setInterval(() => {
+            // 내가 글씨를 적거나 모달 창이 뜬 상태에서는 새로고침으로 인한 날아감 방지!
+            if (!document.getElementById('modal-note').classList.contains('hidden')) {
+                return;
+            }
+            loadSnapshotFromDrive(true); // 조용히 백그라운드 스캔
+        }, 10000);
+    }
+}
+
+async function loadSnapshotFromDrive(isAutoSync = false) {
+    if (!isAutoSync) txtStatus.innerText = "☁️ 캘린더 읽어오는 중...";
     logDebug("== 동기화 스냅샷 조회 시작 ==");
     try {
         // appDataFolder에서 파일 목록 검색 (반드시 인코딩 필요)
@@ -131,10 +148,19 @@ async function loadSnapshotFromDrive() {
             return;
         }
 
-        // 파일 다운로드
+        // 파일 다운로드 (스마트폰 브라우저 캐시 강제 무력화: 0.001초 난수 꼬리표 부착)
         const fileId = filesRes.files[0].id;
         logDebug(`✅ 발견! 파일 ID: ${fileId}. 다운로드 진행...`);
-        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` }});
+        
+        // ?alt=media 뒤에 무의미한 타임스탬프 변수를 붙이면 브라우저가 매번 완전히 새로운 파일로 인식합니다.
+        const bustCacheUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&_t=${new Date().getTime()}`;
+        
+        const res = await fetch(bustCacheUrl, { 
+            headers: { 
+                Authorization: `Bearer ${accessToken}`,
+                'Cache-Control': 'no-cache, no-store, must-revalidate'
+            }
+        });
         logDebug(`⬇ 다운로드 완료 HTTP 상태: ${res.status}`);
         
         const rawText = await res.text();
@@ -254,7 +280,13 @@ async function saveNoteToDrive() {
         
         if (fileId) {
             logDebug("클라우드 최신 JSON 다운로드 중...");
-            const dlRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` }});
+            const bustUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&_t=${new Date().getTime()}`;
+            const dlRes = await fetch(bustUrl, { 
+                headers: { 
+                    Authorization: `Bearer ${accessToken}`,
+                    'Cache-Control': 'no-cache, no-store, must-revalidate'
+                }
+            });
             if(dlRes.ok) {
                 cloudData = await dlRes.json();
             }

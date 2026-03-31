@@ -234,65 +234,86 @@ function openNoteEditor(dateText, existingContent) {
 }
 
 async function saveNoteToDrive() {
-    txtStatus.innerText = "☁️ 폰 메모 전송 중...";
+    txtStatus.innerText = "☁️ 클라우드(JSON) 덮어쓰기 중...";
     modal.classList.add('hidden');
 
-    // 1. 색상 가져오기
     let selectedColor = "";
     for (let r of document.getElementsByName('color')) { if (r.checked) selectedColor = r.value; }
     let prefix = selectedColor ? `[C:${selectedColor}]` : "";
     let finalContent = prefix + txtEditor.value;
+    let nowUtc = new Date().toISOString();
 
-    // 2. 임시 (로컬 메모리) 즉시 반영
-    let existing = calendarData.DailyNotes.find(n => n.CalendarId === selectedTabId && n.DateText === modalTargetDate);
-    if (existing) { existing.Content = finalContent; } 
-    else { calendarData.DailyNotes.push({ CalendarId: selectedTabId, DateText: modalTargetDate, Content: finalContent }); }
-    renderCalendar();
-
-    // 3. PC가 가져갈 수 있도록 병합용 ChangeLog 생성 
-    const changeLog = JSON.stringify({
-        Id: crypto.randomUUID(),
-        DeviceId: "PWA_Phone", // 모바일 기기 식별자
-        Entity: "daily_note",
-        EntityId: `${selectedTabId}|${modalTargetDate}`,
-        Operation: finalContent.trim() === "" ? "DELETE" : "UPDATE",
-        Content: finalContent,
-        TimestampUtc: new Date().toISOString()
-    }) + "\n";
-
+    logDebug("== JSON 마스터 파일 병합/저장 시작 ==");
     try {
-        // 기존 폰 전용 파일이 있는지 확인 후 덧붙이기 (Append/Upload 로직)
-        const query = encodeURIComponent("name='device_PWA_Phone.jsonl'");
-        const fileRes = await fetchGoogle(`files?spaces=appDataFolder&q=${query}`);
-        let fileId = fileRes.files && fileRes.files.length > 0 ? fileRes.files[0].id : null;
+        // 1. 마스터 파일(FrogCalendar.json) 최신본 가져오기
+        const query = encodeURIComponent("name='FrogCalendar.json'");
+        const filesRes = await fetchGoogle(`files?spaces=appDataFolder&q=${query}`);
+        let fileId = filesRes.files && filesRes.files.length > 0 ? filesRes.files[0].id : null;
 
-        let previousData = "";
+        let cloudData = { Calendars: [], DailyNotes: [], RecurringNotes: [] };
+        
         if (fileId) {
+            logDebug("클라우드 최신 JSON 다운로드 중...");
             const dlRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` }});
-            previousData = await dlRes.text();
+            if(dlRes.ok) {
+                cloudData = await dlRes.json();
+            }
         }
 
-        const newData = previousData + changeLog;
-        const metadata = { name: 'device_PWA_Phone.jsonl', parents: ['appDataFolder'] };
+        // 2. 동시성 충돌 해결 (Smart Merge - Append)
+        let existingNote = cloudData.DailyNotes.find(n => n.CalendarId === selectedTabId && n.DateText === modalTargetDate);
+        if (existingNote) {
+            // 똑같은 노트가 존재할 때, 내용이 서로 다르다면 이어붙이기
+            let cleanFinal = txtEditor.value.trim();
+            // 임시로 구글에 있던 내용에서 색상 태그를 제거하고 원본 텍스트만 추출해 비교
+            let rawCloudText = existingNote.Content || "";
+            if (rawCloudText.startsWith("[C:#") && rawCloudText.length >= 11 && rawCloudText[10] === ']') {
+                rawCloudText = rawCloudText.substring(11);
+            }
+            rawCloudText = rawCloudText.trim();
+
+            if (rawCloudText !== cleanFinal && rawCloudText.length > 0 && cleanFinal.length > 0) {
+                logDebug("⚠️ 동시성 충돌 감지! 데이터를 날리지 않고 이어붙입니다 (Append).");
+                finalContent = `${prefix}${rawCloudText} \n\n--- 폰에서 병합됨 ---\n\n ${cleanFinal}`;
+            }
+            existingNote.Content = finalContent;
+            existingNote.UpdatedAt = nowUtc;
+        } else {
+            cloudData.DailyNotes.push({ 
+                CalendarId: selectedTabId, 
+                DateText: modalTargetDate, 
+                Content: finalContent, 
+                UpdatedAt: nowUtc 
+            });
+        }
+        
+        // 메모리에 즉시 반영 (화면 새로고침)
+        calendarData = cloudData;
+        renderCalendar();
+
+        // 3. 통째로 구글 드라이브에 다시 엎어쓰기 (P2P JSON Master)
+        logDebug("병합된 새 JSON 파일 구글 드라이브 업로드 중...");
+        const jsonBlob = new Blob([JSON.stringify(cloudData, null, 2)], { type: 'application/json' });
+        const metadata = { name: 'FrogCalendar.json', parents: ['appDataFolder'] };
         const form = new FormData();
         form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-        form.append('file', new Blob([newData], { type: 'text/plain' }));
+        form.append('file', jsonBlob);
 
         if (fileId) {
-            // 업데이트
             await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
                 method: 'PATCH', headers: { Authorization: `Bearer ${accessToken}` }, body: form
             });
         } else {
-            // 신규 생성
             await fetch(`https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`, {
                 method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form
             });
         }
         
+        logDebug("✅ 마스터 JSON 클라우드 저장 완료!");
         txtStatus.innerText = "✅ 폰(웹) 데이터 클라우드 저장 완료";
     } catch(err) {
         txtStatus.innerText = "전송 실패 (PC에는 반영안됨)";
+        logDebug(`JS ERROR: 저장 중 예외 발생 ${err.message}`);
         console.error(err);
     }
 }

@@ -38,13 +38,27 @@ window.onerror = function(message, source, lineno, colno, error) {
 
 // --- 1. 브라우저 로딩 및 구글 인증 체계 초기화 ---
 window.onload = () => {
+    // --- 0. 접속 기기 자동 감지 (PC / 모바일) 및 UI 암살 ---
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobileDevice) {
+        // 모바일 접속 시 PC용 .exe 다운로드 버튼 숨김
+        const btnPc = document.getElementById('btn-download-pc');
+        if (btnPc) btnPc.style.display = 'none';
+    } else {
+        // PC 접속 시 모바일 보안 안내 문구 숨김
+        const txtMobileInfo = document.getElementById('txt-mobile-info');
+        if (txtMobileInfo) txtMobileInfo.style.display = 'none';
+    }
+
     // ---- 1. PWA 홈 화면 추가 (A2HS) 설치 버튼 트리거 ----
     let deferredPrompt;
     const installBtn = document.getElementById('btn-install-app');
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        if (installBtn) installBtn.style.display = 'block';
+        // 오직 모바일(안드로이드 폰)일 때만 설치 팝업 허용
+        if (isMobileDevice && installBtn) installBtn.style.display = 'block';
     });
 
     if (installBtn) {

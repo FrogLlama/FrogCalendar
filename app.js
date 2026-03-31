@@ -58,11 +58,26 @@ window.onload = () => {
         };
     }
 
-    // ---- 2. 1시간 유지 자동 로그인 패스 (토큰 재활용) ----
+    // ---- 2. 1시간 유지 자동 로그인 패스 (토큰 재활용) 및 오프라인 패스 ----
     const cachedToken = localStorage.getItem('frog_token');
     const tokenExp = localStorage.getItem('frog_token_exp');
     
-    if (cachedToken && tokenExp && Date.now() < parseInt(tokenExp)) {
+    // 만약 오프라인 상태(비행기 모드 등)라면, 남은 수명과 관계 없이 일단 무사통과시킵니다.
+    if (!navigator.onLine) {
+        logDebug("▶ [오프라인] 인터넷 끊김! 즉시 읽기 전용 모드로 달력을 강제 오픈합니다.");
+        loginScreen.classList.add('hidden');
+        mainScreen.classList.remove('hidden');
+        
+        const offlineData = localStorage.getItem('frog_offline_data');
+        if (offlineData) {
+            calendarData = JSON.parse(offlineData);
+            renderCalendar();
+        }
+        const st = document.getElementById('txt-status');
+        st.innerText = "📵 오프라인 (읽기 전용)";
+        st.style.color = "#ff9800"; // 주황색 경고
+    }
+    else if (cachedToken && tokenExp && Date.now() < parseInt(tokenExp)) {
         logDebug("▶ [자동 로그인] 1시간 유효 토큰 감지! 팝업 프리패스!");
         accessToken = cachedToken;
         loginScreen.classList.add('hidden');
@@ -216,6 +231,9 @@ async function loadSnapshotFromDrive(isAutoSync = false) {
         const rawText = await res.text();
         logDebug(`📦 데이터 용량: ${rawText.length} byte 받았음`);
         
+        // ---💡 [오프라인 지원] 폰 내부 금고에 최신 일정 복사 저장 ---
+        localStorage.setItem('frog_offline_data', rawText);
+        
         calendarData = JSON.parse(rawText);
         logDebug(`✅ 파싱 완료! 매핑된 달력 탭: ${calendarData.Calendars ? calendarData.Calendars.length : 0}개`);
 
@@ -231,9 +249,32 @@ async function loadSnapshotFromDrive(isAutoSync = false) {
         }
 
         txtStatus.innerText = "✅ 동기화 됨";
+        txtStatus.style.color = "#ccc"; // 원상복구
         renderCalendar();
     } catch (err) {
-        txtStatus.innerText = "오류 발생: " + err;
+        logDebug(`JS ERROR: 스냅샷 조회 실패 ${err.message}`);
+        
+        // --- 💣 [오프라인 지원] 통신이 끊겼다면 금고에서 비상식량 꺼내오기 ---
+        const offlineData = localStorage.getItem('frog_offline_data');
+        if (offlineData) {
+            calendarData = JSON.parse(offlineData);
+            
+            // 탭 드롭다운 복원 렌더링
+            selTabs.innerHTML = '';
+            let tabs = calendarData.Calendars || [];
+            tabs.sort((a,b) => a.SortOrder - b.SortOrder).forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.Id; opt.innerText = t.Name;
+                selTabs.appendChild(opt);
+            });
+            if (tabs.length > 0) selectedTabId = tabs[0].Id;
+            
+            renderCalendar();
+            txtStatus.innerText = "📵 통신 끊김 (읽기 전용)";
+            txtStatus.style.color = "#ff9800";
+        } else {
+            txtStatus.innerText = "상태: 데이터 없음 (오프라인 상태)";
+        }
     }
 }
 
@@ -281,8 +322,14 @@ function renderCalendar() {
                 cell.innerHTML += `<div class="cell-note">${displayHtml}</div>`;
             }
 
-            // 클릭 시 폰 에디터 오픈
-            cell.onclick = () => openNoteEditor(dateText, note ? note.Content : "");
+            // 클릭 시 폰 에디터 오픈 (오프라인 통신 차단 방어막 탑재)
+            cell.onclick = () => {
+                if (!navigator.onLine || txtStatus.innerText.includes("읽기 전용")) {
+                    alert("🚫 통신이 끊겨 오프라인(읽기 전용) 모드로 작동 중입니다.\n\n수정이 불가능하며 현재 폰 금고에 저장된 마지막 일정만 조회할 수 있습니다.");
+                    return;
+                }
+                openNoteEditor(dateText, note ? note.Content : "");
+            };
         }
         grid.appendChild(cell);
     }

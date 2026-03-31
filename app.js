@@ -328,8 +328,10 @@ function renderCalendar() {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    // 42 cells
-    for (let i = 0; i < 42; i++) {
+    // 🌟 똑똑한 달력 줄 자르기 (2026년 3월처럼 일찍 끝나는 달은 밑의 빈 줄을 통째로 날림)
+    const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+
+    for (let i = 0; i < totalCells; i++) {
         const cell = document.createElement('div');
         cell.className = 'cal-cell';
         if (i % 7 === 0) cell.classList.add('sunday');

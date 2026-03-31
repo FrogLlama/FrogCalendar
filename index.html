@@ -30,6 +30,7 @@
         <header class="app-header">
             <div class="user-info">
                 <span id="txt-status">☁️ 동기화 중...</span>
+                <button id="btn-toggle-log" style="background:none;border:1px solid #555;color:#aaa;border-radius:4px;font-size:10px;margin-left:10px;padding:2px 6px;cursor:pointer;">로그 끄기/켜기</button>
             </div>
             <!-- PC와 동일한 탭 리스트 -->
             <select id="sel-tabs" class="tab-select"></select>
@@ -74,6 +75,6 @@
     </div>
 
     <script src="app.js"></script>
-    <div id="debug-log" style="position:fixed; bottom:0; left:0; width:100%; height:25%; background:rgba(0,0,0,0.85); color:#00FF00; font-family:monospace; font-size:11px; overflow-y:auto; z-index:9999; padding:5px; pointer-events:none;">[ System Logger Ready ]</div>
+    <div id="debug-log" style="display:none; position:fixed; bottom:0; left:0; width:100%; height:25%; background:rgba(0,0,0,0.85); color:#00FF00; font-family:monospace; font-size:11px; overflow-y:auto; z-index:9999; padding:5px; pointer-events:none;">[ System Logger Ready ]</div>
 </body>
 </html>

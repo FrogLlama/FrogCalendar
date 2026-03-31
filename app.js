@@ -79,6 +79,12 @@ window.onload = () => {
     document.getElementById('btn-prev').onclick = () => { currentMonth.setMonth(currentMonth.getMonth() - 1); renderCalendar(); };
     document.getElementById('btn-next').onclick = () => { currentMonth.setMonth(currentMonth.getMonth() + 1); renderCalendar(); };
     selTabs.onchange = () => { selectedTabId = selTabs.value; renderCalendar(); };
+    
+    // 디버그 로그창 켜기/끄기
+    document.getElementById('btn-toggle-log').onclick = () => {
+        const logEl = document.getElementById('debug-log');
+        if (logEl) { logEl.style.display = (logEl.style.display === 'none') ? 'block' : 'none'; }
+    };
 
     // 모달 닫기
     document.getElementById('btn-close-modal').onclick = () => modal.classList.add('hidden');

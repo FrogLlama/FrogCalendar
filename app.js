@@ -22,6 +22,19 @@ const txtEditor = document.getElementById('txt-editor');
 const txtModalDate = document.getElementById('txt-modal-date');
 let modalTargetDate = null;
 
+// --- 디버그 시스템 로거 ---
+function logDebug(msg) {
+    const el = document.getElementById('debug-log');
+    if(el) {
+        let text = typeof msg === 'object' ? JSON.stringify(msg) : msg;
+        el.innerHTML += `<br>[${new Date().toLocaleTimeString()}] ${text}`;
+        el.scrollTop = el.scrollHeight;
+    }
+}
+window.onerror = function(message, source, lineno, colno, error) {
+    logDebug(`JS ERROR: ${message} at line ${lineno}`);
+};
+
 // --- 1. 브라우저 로딩 및 구글 인증 체계 초기화 ---
 window.onload = () => {
     // Google Identity Services 로드 대기
@@ -83,30 +96,45 @@ window.onload = () => {
 
 // --- 2. 구글 드라이브 API 통신 ---
 async function fetchGoogle(endpoint, method = 'GET', body = null) {
+    logDebug(`▶ API Call [${method}] ${endpoint.substring(0, 40)}...`);
     const options = { method, headers: { Authorization: `Bearer ${accessToken}` } };
     if (body) {
         if (body instanceof FormData) { options.body = body; }
         else { options.headers['Content-Type'] = 'application/json'; options.body = body; }
     }
     const res = await fetch(`https://www.googleapis.com/drive/v3/${endpoint}`, options);
-    return res.json();
+    logDebug(`◀ HTTP 응답 상태: ${res.status}`);
+    const json = await res.json();
+    if(json.error) logDebug(`❌ 구글 API 오류: ${JSON.stringify(json.error)}`);
+    return json;
 }
 
 async function loadSnapshotFromDrive() {
     txtStatus.innerText = "☁️ 캘린더 읽어오는 중...";
+    logDebug("== 동기화 스냅샷 조회 시작 ==");
     try {
         // appDataFolder에서 파일 목록 검색 (반드시 인코딩 필요)
         const query = encodeURIComponent("name='FrogCalendar.json'");
+        logDebug("드라이브 앱 전용 폴더 파일 검색 중...");
         const filesRes = await fetchGoogle(`files?spaces=appDataFolder&q=${query}`);
+        
         if (!filesRes.files || filesRes.files.length === 0) {
+            logDebug("❌ 드라이브에 FrogCalendar.json 파일이 존재하지 않습니다.");
             txtStatus.innerText = "상태: PC 데이터 없음 (먼저 PC에서 올려주세요)";
             return;
         }
 
         // 파일 다운로드
         const fileId = filesRes.files[0].id;
+        logDebug(`✅ 발견! 파일 ID: ${fileId}. 다운로드 진행...`);
         const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` }});
-        calendarData = await res.json();
+        logDebug(`⬇ 다운로드 완료 HTTP 상태: ${res.status}`);
+        
+        const rawText = await res.text();
+        logDebug(`📦 데이터 용량: ${rawText.length} byte 받았음`);
+        
+        calendarData = JSON.parse(rawText);
+        logDebug(`✅ 파싱 완료! 매핑된 달력 탭: ${calendarData.Calendars ? calendarData.Calendars.length : 0}개`);
 
         // 탭 드롭다운 렌더링
         selTabs.innerHTML = '';

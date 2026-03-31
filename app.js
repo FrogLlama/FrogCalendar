@@ -159,6 +159,26 @@ window.onload = () => {
         }
     };
 
+    // 철저한 기기 청소(완벽 로그아웃 및 캐시 파기)
+    document.getElementById('btn-logout').onclick = () => {
+        if (!confirm("정말 로그아웃 하시겠습니까?\n(오프라인으로 묻어둔 일정 캐시 및 자동 접속 쿠폰이 안전하게 폐쇄 장부에 소각됩니다.)")) return;
+        
+        // 캐시 제거 트리거
+        localStorage.removeItem('frog_token');
+        localStorage.removeItem('frog_token_exp');
+        localStorage.removeItem('frog_offline_data');
+        
+        // 돌아가던 동기화 모터 및 인메모리 메모장 삭제
+        if (webSyncTimer) { clearInterval(webSyncTimer); webSyncTimer = null; }
+        accessToken = "";
+        calendarData = { Calendars: [], DailyNotes: [], RecurringNotes: [] };
+        
+        // 화면 체인지
+        mainScreen.classList.add('hidden');
+        loginScreen.classList.remove('hidden');
+        logDebug("❌ 로그아웃 및 캐시 파쇄 성공적");
+    };
+
     // 모달 닫기
     document.getElementById('btn-close-modal').onclick = () => modal.classList.add('hidden');
     

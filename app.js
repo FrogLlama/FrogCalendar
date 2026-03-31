@@ -326,19 +326,27 @@ async function saveNoteToDrive() {
         // 3. 통째로 구글 드라이브에 다시 엎어쓰기 (P2P JSON Master)
         logDebug("병합된 새 JSON 파일 구글 드라이브 업로드 중...");
         const jsonBlob = new Blob([JSON.stringify(cloudData, null, 2)], { type: 'application/json' });
-        const metadata = { name: 'FrogCalendar.json', parents: ['appDataFolder'] };
+        
+        // ★ 핵심 버그 픽스: 이미 있는 파일을 덮어쓸(PATCH) 때는 구글 API 정책상 parents 옵션을 반드시 빼야 함!
+        const metadata = fileId ? { name: 'FrogCalendar.json' } : { name: 'FrogCalendar.json', parents: ['appDataFolder'] };
         const form = new FormData();
         form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
         form.append('file', jsonBlob);
 
+        let uploadRes;
         if (fileId) {
-            await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
+            uploadRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
                 method: 'PATCH', headers: { Authorization: `Bearer ${accessToken}` }, body: form
             });
         } else {
-            await fetch(`https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`, {
+            uploadRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`, {
                 method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form
             });
+        }
+        
+        if (!uploadRes.ok) {
+            const errText = await uploadRes.text();
+            throw new Error(`업로드 HTTP 거부됨: ${uploadRes.status} -> ${errText}`);
         }
         
         logDebug("✅ 마스터 JSON 클라우드 저장 완료!");

@@ -38,6 +38,42 @@ window.onerror = function(message, source, lineno, colno, error) {
 
 // --- 1. 브라우저 로딩 및 구글 인증 체계 초기화 ---
 window.onload = () => {
+    // ---- 1. PWA 홈 화면 추가 (A2HS) 설치 버튼 트리거 ----
+    let deferredPrompt;
+    const installBtn = document.getElementById('btn-install-app');
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (installBtn) installBtn.style.display = 'block';
+    });
+
+    if (installBtn) {
+        installBtn.onclick = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') installBtn.style.display = 'none';
+                deferredPrompt = null;
+            }
+        };
+    }
+
+    // ---- 2. 1시간 유지 자동 로그인 패스 (토큰 재활용) ----
+    const cachedToken = localStorage.getItem('frog_token');
+    const tokenExp = localStorage.getItem('frog_token_exp');
+    
+    if (cachedToken && tokenExp && Date.now() < parseInt(tokenExp)) {
+        logDebug("▶ [자동 로그인] 1시간 유효 토큰 감지! 팝업 프리패스!");
+        accessToken = cachedToken;
+        loginScreen.classList.add('hidden');
+        mainScreen.classList.remove('hidden');
+        loadSnapshotFromDrive();
+        startAutoSync();
+    } else {
+        logDebug("토큰 만료 혹은 첫 접속. 수동 로그인 대기 중.");
+    }
+
+    // ---- 3. 수동 로그인 버튼 동작 모듈 (GSI) ----
     logDebug("✅ 브라우저 준비 완료. 구글 모듈(GSI) 로딩 중...");
     
     // Google Identity Services 로드 대기
@@ -66,6 +102,11 @@ window.onload = () => {
             callback: (res) => {
                 logDebug("수동 로그인 팝업 콜백 완료.");
                 accessToken = res.access_token;
+                
+                // 발급받은 열쇠를 금고에 1시간(~3500초) 보관하여 다음 방문 시 프리패스
+                localStorage.setItem('frog_token', accessToken);
+                localStorage.setItem('frog_token_exp', Date.now() + 3500 * 1000);
+                
                 loginScreen.classList.add('hidden');
                 mainScreen.classList.remove('hidden');
                 loadSnapshotFromDrive();
@@ -80,10 +121,13 @@ window.onload = () => {
     document.getElementById('btn-next').onclick = () => { currentMonth.setMonth(currentMonth.getMonth() + 1); renderCalendar(); };
     selTabs.onchange = () => { selectedTabId = selTabs.value; renderCalendar(); };
     
-    // 디버그 로그창 켜기/끄기
+    // 디버그 로그창 켜기/끄기 (강력 수정형)
     document.getElementById('btn-toggle-log').onclick = () => {
         const logEl = document.getElementById('debug-log');
-        if (logEl) { logEl.style.display = (logEl.style.display === 'none') ? 'block' : 'none'; }
+        if (logEl) { 
+            const isHidden = window.getComputedStyle(logEl).display === 'none';
+            logEl.style.display = isHidden ? 'block' : 'none'; 
+        }
     };
 
     // 모달 닫기
